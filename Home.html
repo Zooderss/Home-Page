@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Custom Search</title>
+    <style>
+        /* --- Basic Styles --- */
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        /* --- Background Styles --- */
+        body {
+            background-color: #282c34; /* Default dark background */
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            transition: background-image 0.5s ease-in-out;
+            color: white;
+        }
+
+        /* --- Main Container --- */
+        .container {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            text-align: center;
+            background-color: rgba(0, 0, 0, 0.4); /* Dark overlay to make text readable */
+        }
+        
+        /* --- Search Wrapper for positioning --- */
+        .search-wrapper {
+            position: relative;
+            width: 40vw; /* Responsive width */
+            min-width: 250px;
+            max-width: 525px; /* Max width adjusted for search button */
+        }
+
+        /* --- Search Form --- */
+        .search-form {
+            display: flex;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50px;
+            overflow: visible; /* Allows suggestions to show */
+            transition: border-radius 0.2s ease-in-out;
+        }
+        
+        /* --- Adjust form corners when suggestions are active --- */
+        .search-form.has-suggestions {
+            border-bottom-left-radius: 0;
+            border-bottom-right-radius: 0;
+        }
+
+        .search-input {
+            border: none;
+            padding: 15px 25px;
+            font-size: 16px;
+            outline: none;
+            width: 100%; /* Take full width of parent */
+            background-color: #f1f1f1;
+            color: #333;
+            border-radius: 50px 0 0 50px; /* Rounded on the left */
+        }
+
+        .search-button {
+            border: none;
+            padding: 15px 25px;
+            background-color: #4285F4; /* Google Blue */
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            border-radius: 0 50px 50px 0; /* Rounded on the right */
+        }
+
+        .search-button:hover {
+            background-color: #357ae8;
+        }
+
+        /* --- Suggestions Container --- */
+        .suggestions-container {
+            display: none; /* Hidden by default */
+            position: absolute;
+            top: 100%; /* Position it right below the search bar */
+            left: 0;
+            right: 0;
+            background-color: #fff;
+            z-index: 1000;
+            text-align: left;
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            border-top: none;
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+            border-bottom-left-radius: 20px;
+            border-bottom-right-radius: 20px;
+        }
+        
+        .suggestion-item {
+            padding: 12px 25px;
+            color: #333;
+            cursor: pointer;
+            font-size: 15px;
+        }
+
+        .suggestion-item:hover {
+            background-color: #f1f1f1;
+        }
+        
+        .suggestion-item:last-child {
+            border-bottom-left-radius: 20px;
+            border-bottom-right-radius: 20px;
+        }
+        
+        /* --- Background Controls --- */
+        .background-controls {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+        }
+
+        #bg-upload {
+            display: none; /* Hide the actual file input */
+        }
+
+        .upload-label, #reset-bg {
+            background-color: rgba(255, 255, 255, 0.8);
+            color: #333;
+            padding: 8px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+            border: none;
+            backdrop-filter: blur(5px);
+        }
+
+        .upload-label:hover, #reset-bg:hover {
+            background-color: white;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="search-wrapper">
+            <form action="https://www.google.com/search" method="get" class="search-form">
+                <input type="text" name="q" class="search-input" placeholder="Search Google..." autofocus autocomplete="off">
+                <button type="submit" class="search-button">🔍</button>
+            </form>
+            <div id="suggestions-container" class="suggestions-container"></div>
+        </div>
+    </div>
+
+    <div class="background-controls">
+        <label for="bg-upload" class="upload-label">Change Background</label>
+        <input type="file" id="bg-upload" accept="image/*">
+        <button id="reset-bg">Reset</button>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- Element References ---
+            const body = document.body;
+            const bgUploadInput = document.getElementById('bg-upload');
+            const resetBgButton = document.getElementById('reset-bg');
+            const searchForm = document.querySelector('.search-form');
+            const searchInput = document.querySelector('.search-input');
+            const suggestionsContainer = document.getElementById('suggestions-container');
+
+            // --- Background Image Logic ---
+            const savedBg = localStorage.getItem('customSearchPageBackground');
+            if (savedBg) {
+                body.style.backgroundImage = `url(${savedBg})`;
+            }
+            bgUploadInput.addEventListener('change', (event) => {
+                const file = event.target.files[0];
+                if (file && file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const imageUrl = e.target.result;
+                        body.style.backgroundImage = `url(${imageUrl})`;
+                        localStorage.setItem('customSearchPageBackground', imageUrl);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+            resetBgButton.addEventListener('click', () => {
+                body.style.backgroundImage = 'none';
+                localStorage.removeItem('customSearchPageBackground');
+            });
+
+            // --- Autosuggest Logic ---
+
+            const fetchAndDisplaySuggestions = async (query) => {
+                if (query.length < 1) {
+                    hideSuggestions();
+                    return;
+                }
+                try {
+                    // **Using a more reliable endpoint for suggestions**
+                    const url = `https://www.google.com/complete/search?client=gws-wiz&q=${encodeURIComponent(query)}`;
+                    const response = await fetch(url);
+                    if (!response.ok) {
+                        throw new Error(`Network response was not ok: ${response.statusText}`);
+                    }
+                    
+                    // This response is not raw JSON, so we have to process it as text first.
+                    const text = await response.text();
+                    // The actual JSON is after the first line, which is a security feature.
+                    const data = JSON.parse(text.substring(text.indexOf('\n')));
+                    
+                    // Extract the suggestion strings from the complex data structure.
+                    const suggestions = data[0].map(item => item[0]);
+
+                    if (!suggestions || suggestions.length === 0) {
+                        hideSuggestions();
+                        return;
+                    }
+
+                    suggestionsContainer.innerHTML = ''; 
+                    suggestions.forEach(suggestion => {
+                        const item = document.createElement('div');
+                        item.className = 'suggestion-item';
+                        item.textContent = suggestion;
+
+                        item.addEventListener('mousedown', (e) => {
+                            e.preventDefault();
+                            const searchQuery = item.textContent;
+                            window.location.href = `https://www.google.com/search?q=${encodeURIComponent(searchQuery)}`;
+                        });
+
+                        suggestionsContainer.appendChild(item);
+                    });
+                    showSuggestions();
+                } catch (error) {
+                    console.error("Suggestion fetch failed:", error);
+                    hideSuggestions();
+                }
+            };
+            
+            const showSuggestions = () => {
+                suggestionsContainer.style.display = 'block';
+                searchForm.classList.add('has-suggestions');
+            }
+
+            const hideSuggestions = () => {
+                suggestionsContainer.style.display = 'none';
+                searchForm.classList.remove('has-suggestions');
+            }
+
+            searchInput.addEventListener('input', () => fetchAndDisplaySuggestions(searchInput.value));
+            searchInput.addEventListener('focus', () => fetchAndDisplaySuggestions(searchInput.value));
+            document.addEventListener('click', (event) => {
+                if (!searchForm.contains(event.target)) {
+                    hideSuggestions();
+                }
+            });
+        });
+    </script>
+
+</body>
+</html>
